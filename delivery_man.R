@@ -1,36 +1,19 @@
-myFunction <- function(roads, car, packages) {
+manhattan <- function(x1, y1, x2, y2) {
+  abs(x1 - x2) + abs(y1 - y2)
+}
+
+findPath <- function(startX, startY, targetX, targetY, roads) {
+  boardSize <- nrow(roads$vroads)
   
-  if (car$load == 0) {
-    
-    available <- which(packages[, 5] == 0)
-    
-    distances <- abs(packages[available, 1] - car$x) +
-      abs(packages[available, 2] - car$y)
-    
-    targetPackage <- available[which.min(distances)]
-    
-    targetX <- packages[targetPackage, 1]
-    targetY <- packages[targetPackage, 2]
-    
-  } else {
-    
-    targetPackage <- car$load
-    
-    targetX <- packages[targetPackage, 3]
-    targetY <- packages[targetPackage, 4]
+  if (startX == targetX && startY == targetY) {
+    return(5)
   }
   
-  if (car$x == targetX && car$y == targetY) {
-    car$nextMove <- 5
-    return(car)
-  }
-  
-  startH <- abs(targetX - car$x) +
-    abs(targetY - car$y)
+  startH <- manhattan(startX, startY, targetX, targetY)
   
   startNode <- list(
-    x = car$x,
-    y = car$y,
+    x = startX,
+    y = startY,
     g = 0,
     h = startH,
     f = startH,
@@ -41,12 +24,8 @@ myFunction <- function(roads, car, packages) {
   nodes <- list()
   
   addNeighbor <- function(newX, newY, roadCost, moveNumber) {
-    
     newG <- current$g + roadCost
-    
-    newH <- abs(targetX - newX) +
-      abs(targetY - newY)
-    
+    newH <- manhattan(newX, newY, targetX, targetY)
     newF <- newG + newH
     
     if (current$first_move == 0) {
@@ -65,15 +44,11 @@ myFunction <- function(roads, car, packages) {
     )
     
     explored <- any(
-      sapply(
-        nodes,
-        function(item)
-          item$x == newX && item$y == newY
-      )
+      sapply(nodes, function(item)
+        item$x == newX && item$y == newY)
     )
     
     if (!explored) {
-      
       matches <- sapply(
         frontier,
         function(item)
@@ -81,11 +56,8 @@ myFunction <- function(roads, car, packages) {
       )
       
       if (!any(matches)) {
-        
         frontier[[length(frontier) + 1]] <<- newNode
-        
       } else {
-        
         i <- which(matches)[1]
         
         if (newG < frontier[[i]]$g) {
@@ -96,28 +68,19 @@ myFunction <- function(roads, car, packages) {
   }
   
   while (length(frontier) > 0) {
-    
-    scores <- sapply(
-      frontier,
-      function(item) item$f
-    )
-    
+    scores <- sapply(frontier, function(item) item$f)
     best <- which.min(scores)
-    
     current <- frontier[[best]]
-    
     frontier <- frontier[-best]
     
     if (current$x == targetX &&
         current$y == targetY) {
-      
-      car$nextMove <- current$first_move
-      return(car)
+      return(current$first_move)
     }
     
     nodes[[length(nodes) + 1]] <- current
     
-    if (current$x < 10) {
+    if (current$x < boardSize) {
       addNeighbor(
         current$x + 1,
         current$y,
@@ -135,7 +98,7 @@ myFunction <- function(roads, car, packages) {
       )
     }
     
-    if (current$y < 10) {
+    if (current$y < boardSize) {
       addNeighbor(
         current$x,
         current$y + 1,
@@ -154,6 +117,40 @@ myFunction <- function(roads, car, packages) {
     }
   }
   
-  car$nextMove <- 5
+  return(5)
+}
+
+myFunction <- function(roads, car, packages) {
+  if (car$load == 0) {
+    available <- which(packages[, 5] == 0)
+    
+    distances <- sapply(
+      available,
+      function(p)
+        manhattan(
+          car$x,
+          car$y,
+          packages[p, 1],
+          packages[p, 2]
+        )
+    )
+    
+    targetPackage <- available[which.min(distances)]
+    targetX <- packages[targetPackage, 1]
+    targetY <- packages[targetPackage, 2]
+  } else {
+    targetPackage <- car$load
+    targetX <- packages[targetPackage, 3]
+    targetY <- packages[targetPackage, 4]
+  }
+  
+  car$nextMove <- findPath(
+    car$x,
+    car$y,
+    targetX,
+    targetY,
+    roads
+  )
+  
   return(car)
 }
