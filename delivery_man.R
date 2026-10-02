@@ -2,51 +2,51 @@ manhattan <- function(x1, y1, x2, y2) {
   abs(x1 - x2) + abs(y1 - y2)
 }
 
-findPath <- function(startX, startY, targetX, targetY, roads) {
+findPath <- function(start_x, start_y, target_x, target_y, roads) {
   boardSize <- nrow(roads$vroads)
   
-  if (startX == targetX && startY == targetY) {
+  if (start_x == target_x && start_y == target_y) {
     return(5)
   }
   
-  startH <- manhattan(startX, startY, targetX, targetY)
+  start_h <- manhattan(start_x, start_y, target_x, target_y) #heuristic at start
   startNode <- list(
-    x = startX,
-    y = startY,
+    x = start_x,
+    y = start_y,
     g = 0,
-    h = startH,
-    f = startH,
+    h = start_h,
+    f = start_h,
     first_move = 0
   )
   
-  #frontier = discovered yet not explored, nodes = already explored
+  # frontier = discovered but not yet explored, nodes = already explored
   frontier <- list(startNode)
   nodes <- list()
   
-  #create and evaulate a neighboring node
-  addNeighbor <- function(newX, newY, roadCost, moveNumber) {
-    newG <- current$g + roadCost
-    newH <- manhattan(newX, newY, targetX, targetY)
-    newF <- newG + newH
+  # create and evaluate a neighboring node
+  addNeighbor <- function(new_x, new_y, roadCost, moveNumber) {
+    new_g <- current$g + roadCost
+    new_h <- manhattan(new_x, new_y, target_x, target_y)
+    new_f <- new_g + new_h
     
     if (current$first_move == 0) {
-      firstMove <- moveNumber
+      initial_move <- moveNumber
     } else {
-      firstMove <- current$first_move
+      initial_move <- current$first_move
     }
     
     newNode <- list(
-      x = newX,
-      y = newY,
-      g = newG,
-      h = newH,
-      f = newF,
-      first_move = firstMove
+      x = new_x,
+      y = new_y,
+      g = new_g,
+      h = new_h,
+      f = new_f,
+      first_move = initial_move
     )
     
     explored <- any(
       sapply(nodes, function(item)
-        item$x == newX && item$y == newY)
+        item$x == new_x && item$y == new_y)
     )
     
     #if node already explored, ignore
@@ -56,7 +56,7 @@ findPath <- function(startX, startY, targetX, targetY, roads) {
     matches <- sapply(
       frontier,
       function(item)
-        item$x == newX && item$y == newY
+        item$x == new_x && item$y == new_y
     )
     
     if (!any(matches)){
@@ -67,23 +67,26 @@ findPath <- function(startX, startY, targetX, targetY, roads) {
     i <- which(matches)[1]
     
     #keep the cheaper node
-    if(newG < frontier[[i]]$g){
+    if(new_g < frontier[[i]]$g){
       frontier[[i]]<<- newNode
     }
   }
+  
+  # Explore frontier nodes in order of lowest f = g + h
   while (length(frontier) > 0) {
     scores <- sapply(frontier, function(item) item$f)
     best <- which.min(scores)
     current <- frontier[[best]]
     frontier <- frontier[-best]
     
-    if (current$x == targetX &&
-        current$y == targetY) {
+    if (current$x == target_x &&
+        current$y == target_y) {
       return(current$first_move)
     }
     
     nodes[[length(nodes) + 1]] <- current
     
+    # Generate valid neighboring nodes
     if (current$x < boardSize) {
       addNeighbor(
         current$x + 1,
@@ -124,36 +127,32 @@ findPath <- function(startX, startY, targetX, targetY, roads) {
   return(5)
 }
 
-#decide which package or located to target, use A*to get there
+# Decide which package/location to target, then use A* to move toward it
 myFunction <- function(roads, car, packages) {
   if (car$load == 0) {
     available_packages <- which(packages[, 5] == 0)
     
-    pickup_distances <- sapply(
-      available_packages,
-      function(p)
-        manhattan(
-          car$x,
-          car$y,
-          packages[p, 1],
-          packages[p, 2]
-        )
+    pickup_distances <- manhattan(
+      car$x,
+      car$y,
+      packages[available_packages, 1],
+      packages[available_packages, 2]
     )
     
-    targetPackage <- available_packages[which.min(pickup_distances)]
-    targetX <- packages[targetPackage, 1]
-    targetY <- packages[targetPackage, 2]
+    target_package <- available_packages[which.min(pickup_distances)]
+    target_x <- packages[target_package, 1]
+    target_y <- packages[target_package, 2]
   } else {
-    targetPackage <- car$load
-    targetX <- packages[targetPackage, 3]
-    targetY <- packages[targetPackage, 4]
+    target_package <- car$load
+    target_x <- packages[target_package, 3]
+    target_y <- packages[target_package, 4]
   }
   
   car$nextMove <- findPath(
     car$x,
     car$y,
-    targetX,
-    targetY,
+    target_x,
+    target_y,
     roads
   )
   
